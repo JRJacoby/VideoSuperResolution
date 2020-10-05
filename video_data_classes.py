@@ -1,4 +1,5 @@
 import os
+import torch
 
 from skimage import io
 from torch.utils.data import Dataset
@@ -9,15 +10,20 @@ class VideoDataset(Dataset):
         samples = []
         video_folders = os.listdir(directory)
         
-        for folder in video_folders:
-            files = os.listdir(directory + '\\' + folder)
-            frames = list(filter(lambda x: x.endswith('.png'), files))
-            frames = [directory + '\\' + folder + '\\' + frame for frame in frames]
-            frames = sorted(frames, key=lambda string: int(''.join(char for char in string if char.isdigit())))
+        for video_folder in video_folders:
+            patch_folders = os.listdir(directory + '\\' + video_folder)
+            patch_folders = [patch_folder for patch_folder in patch_folders if '.' not in patch_folder]
             
-            num_frames = len(frames)
-            for i in list(range(0, num_frames, sequence_length))[:-1]:
-                samples.append(frames[i : i + sequence_length])
+            for patch_folder in patch_folders:
+                patch_folder_path = directory + '\\' + video_folder + '\\' + patch_folder + '\\'
+                files = os.listdir(patch_folder_path)
+                frames = list(filter(lambda x: x.endswith('.png'), files))
+                frames = sorted(frames, key=lambda string: int(''.join(char for char in string if char.isdigit())))
+                frames = [patch_folder_path + frame for frame in frames]
+                
+                num_frames = len(frames)
+                for i in list(range(0, num_frames, sequence_length))[:-1]:
+                    samples.append(frames[i : i + sequence_length])
         
         self.samples = samples
         self.length = len(self.samples)
