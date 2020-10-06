@@ -1,3 +1,6 @@
+"""This module contains classes for loading and organizing video data for input into the SuperResolutionNetwork
+class."""
+
 import os
 import torch
 
@@ -6,7 +9,39 @@ from torch.utils.data import Dataset
 from IPython.core.debugger import set_trace
 
 class VideoDataset(Dataset):
+    """
+    A representation of a list of video samples, each sample consisting of several frames.
+    
+    ...
+    
+    Attributes
+    ----------
+    samples : list
+        A list of lists. Each inner list contains sequence_length number of strings. Each string is an absolute
+        filepath to a frame of a video. Note that while only strings are stored, t
+    length : int
+        The number of video samples contained in the dataset
+    sequence_length : int
+        The number of frames in each video sample
+    directory : str
+        The absolute path to the directory containing all video folders. 
+    transform : any of torchvision.transforms from the PyTorch package
+        The transformations to apply to each video frame before returning the frame when called with 
+        VideoDataset[sample_id]
+    """
     def __init__(self, directory, sequence_length, transform=None):
+        """
+        Parameters
+        ----------
+        directory : str
+            The directory containing the video data. The directory should be arranged like the output of the
+            "Prepare Videos.ipynb" script. See that script for more details.
+        sequence_length : int
+            The number of frames in each video sample.
+        transform : any of torchvision.transforms from the PyTorch package
+            The transformations to apply to each video frame before returning the frame when called with 
+            VideoDataset[sample_id]
+        """
         samples = []
         video_folders = os.listdir(directory)
         
