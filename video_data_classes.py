@@ -70,7 +70,7 @@ class VideoDataset(Dataset):
         return self.length
     
     def __getitem__(self, id):
-        images = [io.imread(image) for image in self.samples[id]]
+        images = [io.imread(image).astype('float32') for image in self.samples[id]]
         if self.transform:
             images = self.transform(images)
         return images
@@ -88,4 +88,7 @@ class MinMaxTransformer(object):
             normalized_y.append(frame_y / 255)
             
         return {'X':normalized_x, 'Y':normalized_y}
-                                  
+
+# Lightened images should exist already on disk
+# All transformers and __getitem__ should concatenate numpy arrays instead of append lists
+# Putting the tensors on the GPU in the training loop should happen before the permute operation
