@@ -3,8 +3,9 @@ class."""
 
 import os
 import torch
+import h5py
+import numpy as np
 
-from skimage import io
 from torch.utils.data import Dataset
 from IPython.core.debugger import set_trace
 
@@ -29,7 +30,7 @@ class VideoDataset(Dataset):
         The transformations to apply to each video frame before returning the frame when called with 
         VideoDataset[sample_id]
     """
-    def __init__(self, directory, sequence_length, transform=None):
+    def __init__(self, directory, sequence_length):
         """
         Parameters
         ----------
@@ -38,9 +39,6 @@ class VideoDataset(Dataset):
             "Prepare Videos.ipynb" script. See that script for more details.
         sequence_length : int
             The number of frames in each video sample.
-        transform : any of torchvision.transforms from the PyTorch package
-            The transformations to apply to each video frame before returning the frame when called with 
-            VideoDataset[sample_id]
         """
         samples = []
         video_folders = os.listdir(directory)
@@ -55,40 +53,44 @@ class VideoDataset(Dataset):
                 frames = list(filter(lambda x: x.endswith('.png'), files))
                 frames = sorted(frames, key=lambda string: int(''.join(char for char in string if char.isdigit())))
                 frames = [patch_folder_path + frame for frame in frames]
+                LR_frames = [x.replace(r'Raw, Half-Size, and PNGs', r'LowResFrames') for x in frames]
                 
                 num_frames = len(frames)
                 for i in list(range(0, num_frames, sequence_length))[:-1]:
-                    samples.append(frames[i : i + sequence_length])
+                    samples.append(list(zip(frames[i : i + sequence_length], LR_frames[i : i + sequence_length])))
         
         self.samples = samples
         self.length = len(self.samples)
         self.sequence_length = sequence_length
         self.directory = directory
-        self.transform = transform
         
     def __len__(self):
+        '''
+        Number of training samples in dataset.
+        
+        Returns
+        -------
+        int
+            Number of training samples in dataset
+        '''
         return self.length
     
     def __getitem__(self, id):
-        images = [io.imread(image).astype('float32') for image in self.samples[id]]
-        if self.transform:
-            images = self.transform(images)
-        return images
-    
-class LightenImageTransformer(object):
-    def __call__(self, sample):
-        return {'X':sample, 'Y':[(frame + 30).clip(0, 255) for frame in sample]}
-
-class MinMaxTransformer(object):
-    def __call__(self, sample):
-        normalized_x = []
-        normalized_y = []
-        for frame_x, frame_y in zip(sample['X'], sample['Y']):
-            normalized_x.append(frame_x / 255)
-            normalized_y.append(frame_y / 255)
+        '''
+        Returns one sample of input video and the corresponding sample of output video. Labeled 'X' and 'Y', respectively.
+        Each sample has dimensions [self.sequence_length, 3, 256, 256]
+        
+        Parameters
+        ----------
+        id: int
+            The id of the video sample to return.
             
-        return {'X':normalized_x, 'Y':normalized_y}
-
-# Lightened images should exist already on disk
-# All transformers and __getitem__ should concatenate numpy arrays instead of append lists
-# Putting the tensors on the GPU in the training loop should happen before the permute operation
+        Returns
+        -------
+        dict
+            {'X': input_video_sample, 'Y':output_video_sample}
+        '''
+        num_channels = 3 * self.sequence_length
+        return {'X':self.compressed_data['X'][:, :, id * num_channels:id * (num_channels + 1)] / 255,
+                'Y':self.compressed_data['Y'][:, :, id * num_channels:id * (num_channels + 1)] / 255}
+                   
