@@ -4,6 +4,7 @@ from random import shuffle
 from IPython.display import clear_output
 from skimage import io
 from IPython.core.debugger import set_trace
+from time import sleep
 
 def generate_hdf5(dataset):
     '''
@@ -59,3 +60,31 @@ def make_batches(num_samples, batch_size):
     batch_indices = np.reshape(np.array(indices), (-1, batch_size))
     batch_indices = np.apply_along_axis(lambda x: np.sort(x), 1, batch_indices)
     return batch_indices
+
+
+def compare_output(network, LR_dataset, HR_dataset, sample_id):
+    def file_to_tensor(file_list):
+        tensor = torch.empty((0, 0, 0, 0))
+        for file in file_list:
+            frame = np.transpose(io.imread(file), (2, 0, 1)) # tranpose from sk-image style (h, w, c) to PyTorch style (c, h, w)
+            tensor = torch.cat([tensor, torch.unsqueeze(torch.tensor(frame))], dim=0)
+    
+    LR_files = LR_dataset[sample_id]
+    HR_files = HR_dataset[sample_id]
+    
+    LR_frames = file_to_tensor(LR_files)
+    HR_frames = file_to_tensor(HR_files)
+    generated_frames = network(LR_frames) # outputs [batch, frame, channel, height, width]
+    
+    fig, (LR, HR, generated) = plt.subplots(1, 3)
+    
+    for i in range(generated_frames.shape[1]): # for each frame in the generated output
+        LR.imshow(LR_frames[0, i, ...])
+        HR.imshow(HR_frames[0, i, ...])
+        generated.imshow(generated_frames[0, i, ...])
+        sleep(0.4) # waits for a fifth of a second before displaying the next frame
+        LR.clear()
+        HR.clear()
+        generated.clear()
+    
+    
